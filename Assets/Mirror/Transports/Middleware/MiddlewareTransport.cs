@@ -26,6 +26,7 @@ namespace Mirror
             inner.OnClientDataReceived = OnClientDataReceived;
             inner.OnClientDisconnected = OnClientDisconnected;
             inner.OnClientError = OnClientError;
+            inner.OnClientTransportException = OnClientTransportException;
             inner.ClientConnect(address);
         }
 
@@ -42,9 +43,11 @@ namespace Mirror
         public override void ServerStart()
         {
             inner.OnServerConnected = OnServerConnected;
+            inner.OnServerConnectedWithAddress = OnServerConnectedWithAddress;
             inner.OnServerDataReceived = OnServerDataReceived;
             inner.OnServerDisconnected = OnServerDisconnected;
             inner.OnServerError = OnServerError;
+            inner.OnServerTransportException = OnServerTransportException;
             inner.ServerStart();
         }
 

@@ -43,11 +43,14 @@ namespace Mirror.Examples.AdditiveLevels
         // up in the Physics collision matrix so only Player collides with Portal.
         void OnTriggerEnter(Collider other)
         {
+            if (!(other is CapsuleCollider)) return; // ignore CharacterController colliders
+
+            Debug.Log($"Portal.OnTriggerEnter {other}");
             // tag check in case you didn't set up the layers and matrix as noted above
             if (!other.CompareTag("Player")) return;
 
             // applies to host client on server and remote clients
-            if (other.TryGetComponent(out PlayerController playerController))
+            if (other.TryGetComponent(out Common.Controllers.Player.PlayerController playerController))
                 playerController.enabled = false;
 
             if (isServer)
@@ -69,7 +72,7 @@ namespace Mirror.Examples.AdditiveLevels
                 yield return new WaitForSeconds(AdditiveLevelsNetworkManager.singleton.fadeInOut.GetDuration());
 
                 // Remove player after fader has completed
-                NetworkServer.RemovePlayerForConnection(conn, false);
+                NetworkServer.RemovePlayerForConnection(conn, RemovePlayerOptions.Unspawn);
 
                 // reposition player on server and client
                 player.transform.position = startPosition;
@@ -90,7 +93,7 @@ namespace Mirror.Examples.AdditiveLevels
 
                 // host client playerController would have been disabled by OnTriggerEnter above
                 // Remote client players are respawned with playerController already enabled
-                if (NetworkClient.localPlayer != null && NetworkClient.localPlayer.TryGetComponent(out PlayerController playerController))
+                if (NetworkClient.localPlayer != null && NetworkClient.localPlayer.TryGetComponent(out Common.Controllers.Player.PlayerController playerController))
                     playerController.enabled = true;
             }
         }

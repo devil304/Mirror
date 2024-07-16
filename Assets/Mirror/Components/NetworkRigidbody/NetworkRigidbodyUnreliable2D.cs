@@ -3,12 +3,28 @@ using UnityEngine;
 namespace Mirror
 {
     // [RequireComponent(typeof(Rigidbody))] <- OnValidate ensures this is on .target
+    [AddComponentMenu("Network/Network Rigidbody 2D (Unreliable)")]
     public class NetworkRigidbodyUnreliable2D : NetworkTransformUnreliable
     {
         bool clientAuthority => syncDirection == SyncDirection.ClientToServer;
 
         Rigidbody2D rb;
         bool wasKinematic;
+
+        protected override void OnValidate()
+        {
+            // Skip if Editor is in Play mode
+            if (Application.isPlaying) return;
+
+            base.OnValidate();
+
+            // we can't overwrite .target to be a Rigidbody.
+            // but we can ensure that .target has a Rigidbody, and use it.
+            if (target.GetComponent<Rigidbody2D>() == null)
+            {
+                Debug.LogWarning($"{name}'s NetworkRigidbody2D.target {target.name} is missing a Rigidbody2D", this);
+            }
+        }
 
         // cach Rigidbody and original isKinematic setting
         protected override void Awake()
@@ -81,16 +97,19 @@ namespace Mirror
             }
         }
 
-        protected override void OnValidate()
+        protected override void OnTeleport(Vector3 destination)
         {
-            base.OnValidate();
+            base.OnTeleport(destination);
 
-            // we can't overwrite .target to be a Rigidbody.
-            // but we can ensure that .target has a Rigidbody, and use it.
-            if (target.GetComponent<Rigidbody2D>() == null)
-            {
-                Debug.LogWarning($"{name}'s NetworkRigidbody2D.target {target.name} is missing a Rigidbody2D", this);
-            }
+            rb.position = transform.position;
+        }
+
+        protected override void OnTeleport(Vector3 destination, Quaternion rotation)
+        {
+            base.OnTeleport(destination, rotation);
+
+            rb.position = transform.position;
+            rb.rotation = transform.rotation.eulerAngles.z;
         }
     }
 }

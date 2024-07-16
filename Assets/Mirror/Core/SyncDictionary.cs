@@ -15,6 +15,14 @@ namespace Mirror
         /// <summary>This is called after the item is removed with TKey. TValue is the OLD item</summary>
         public Action<TKey, TValue> OnRemove;
 
+        /// <summary>
+        /// This is called for all changes to the Dictionary.
+        /// <para>For OP_ADD, TValue is the NEW value of the entry.</para>
+        /// <para>For OP_SET and OP_REMOVE, TValue is the OLD value of the entry.</para>
+        /// <para>For OP_CLEAR, both TKey and TValue are default.</para>
+        /// </summary>
+        public Action<Operation, TKey, TValue> OnChange;
+
         /// <summary>This is called before the data is cleared</summary>
         public Action OnClear;
 
@@ -23,6 +31,11 @@ namespace Mirror
         public Action<Operation, TKey, TValue> Callback;
 
         protected readonly IDictionary<TKey, TValue> objects;
+
+        public SyncIDictionary(IDictionary<TKey, TValue> objects)
+        {
+            this.objects = objects;
+        }
 
         public int Count => objects.Count;
         public bool IsReadOnly => !IsWritable();
@@ -55,13 +68,6 @@ namespace Mirror
         // so we need to skip them
         int changesAhead;
 
-        public override void Reset()
-        {
-            changes.Clear();
-            changesAhead = 0;
-            objects.Clear();
-        }
-
         public ICollection<TKey> Keys => objects.Keys;
 
         public ICollection<TValue> Values => objects.Values;
@@ -69,54 +75,6 @@ namespace Mirror
         IEnumerable<TKey> IReadOnlyDictionary<TKey, TValue>.Keys => objects.Keys;
 
         IEnumerable<TValue> IReadOnlyDictionary<TKey, TValue>.Values => objects.Values;
-
-        // throw away all the changes
-        // this should be called after a successful sync
-        public override void ClearChanges() => changes.Clear();
-
-        public SyncIDictionary(IDictionary<TKey, TValue> objects)
-        {
-            this.objects = objects;
-        }
-
-        void AddOperation(Operation op, TKey key, TValue item, TValue oldItem, bool checkAccess)
-        {
-            if (checkAccess && IsReadOnly)
-                throw new InvalidOperationException("SyncDictionaries can only be modified by the owner.");
-
-            Change change = new Change
-            {
-                operation = op,
-                key = key,
-                item = item
-            };
-
-            if (IsRecording())
-            {
-                changes.Add(change);
-                OnDirty?.Invoke();
-            }
-
-            switch (op)
-            {
-                case Operation.OP_ADD:
-                    OnAdd?.Invoke(key);
-                    break;
-                case Operation.OP_SET:
-                    OnSet?.Invoke(key, oldItem);
-                    break;
-                case Operation.OP_REMOVE:
-                    OnRemove?.Invoke(key, oldItem);
-                    break;
-                case Operation.OP_CLEAR:
-                    OnClear?.Invoke();
-                    break;
-            }
-
-#pragma warning disable CS0618 // Type or member is obsolete
-            Callback?.Invoke(op, key, item);
-#pragma warning restore CS0618 // Type or member is obsolete
-        }
 
         public override void OnSerializeAll(NetworkWriter writer)
         {
@@ -261,24 +219,15 @@ namespace Mirror
             }
         }
 
-        public void Clear()
+        // throw away all the changes
+        // this should be called after a successful sync
+        public override void ClearChanges() => changes.Clear();
+
+        public override void Reset()
         {
-            AddOperation(Operation.OP_CLEAR, default, default, default, true);
-            // clear after invoking the callback so users can iterate the dictionary
-            // and take appropriate action on the items before they are wiped.
+            changes.Clear();
+            changesAhead = 0;
             objects.Clear();
-        }
-
-        public bool ContainsKey(TKey key) => objects.ContainsKey(key);
-
-        public bool Remove(TKey key)
-        {
-            if (objects.TryGetValue(key, out TValue oldItem) && objects.Remove(key))
-            {
-                AddOperation(Operation.OP_REMOVE, key, oldItem, oldItem, true);
-                return true;
-            }
-            return false;
         }
 
         public TValue this[TKey i]
@@ -302,13 +251,7 @@ namespace Mirror
 
         public bool TryGetValue(TKey key, out TValue value) => objects.TryGetValue(key, out value);
 
-        public void Add(TKey key, TValue value)
-        {
-            objects.Add(key, value);
-            AddOperation(Operation.OP_ADD, key, value, default, true);
-        }
-
-        public void Add(KeyValuePair<TKey, TValue> item) => Add(item.Key, item.Value);
+        public bool ContainsKey(TKey key) => objects.ContainsKey(key);
 
         public bool Contains(KeyValuePair<TKey, TValue> item) => TryGetValue(item.Key, out TValue val) && EqualityComparer<TValue>.Default.Equals(val, item.Value);
 
@@ -328,6 +271,24 @@ namespace Mirror
             }
         }
 
+        public void Add(KeyValuePair<TKey, TValue> item) => Add(item.Key, item.Value);
+
+        public void Add(TKey key, TValue value)
+        {
+            objects.Add(key, value);
+            AddOperation(Operation.OP_ADD, key, value, default, true);
+        }
+
+        public bool Remove(TKey key)
+        {
+            if (objects.TryGetValue(key, out TValue oldItem) && objects.Remove(key))
+            {
+                AddOperation(Operation.OP_REMOVE, key, oldItem, oldItem, true);
+                return true;
+            }
+            return false;
+        }
+
         public bool Remove(KeyValuePair<TKey, TValue> item)
         {
             bool result = objects.Remove(item.Key);
@@ -335,6 +296,57 @@ namespace Mirror
                 AddOperation(Operation.OP_REMOVE, item.Key, item.Value, item.Value, true);
 
             return result;
+        }
+
+        public void Clear()
+        {
+            AddOperation(Operation.OP_CLEAR, default, default, default, true);
+            // clear after invoking the callback so users can iterate the dictionary
+            // and take appropriate action on the items before they are wiped.
+            objects.Clear();
+        }
+
+        void AddOperation(Operation op, TKey key, TValue item, TValue oldItem, bool checkAccess)
+        {
+            if (checkAccess && IsReadOnly)
+                throw new InvalidOperationException("SyncDictionaries can only be modified by the owner.");
+
+            Change change = new Change
+            {
+                operation = op,
+                key = key,
+                item = item
+            };
+
+            if (IsRecording())
+            {
+                changes.Add(change);
+                OnDirty?.Invoke();
+            }
+
+            switch (op)
+            {
+                case Operation.OP_ADD:
+                    OnAdd?.Invoke(key);
+                    OnChange?.Invoke(op, key, item);
+                    break;
+                case Operation.OP_SET:
+                    OnSet?.Invoke(key, oldItem);
+                    OnChange?.Invoke(op, key, oldItem);
+                    break;
+                case Operation.OP_REMOVE:
+                    OnRemove?.Invoke(key, oldItem);
+                    OnChange?.Invoke(op, key, oldItem);
+                    break;
+                case Operation.OP_CLEAR:
+                    OnClear?.Invoke();
+                    OnChange?.Invoke(op, default, default);
+                    break;
+            }
+
+#pragma warning disable CS0618 // Type or member is obsolete
+            Callback?.Invoke(op, key, item);
+#pragma warning restore CS0618 // Type or member is obsolete
         }
 
         public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator() => objects.GetEnumerator();
