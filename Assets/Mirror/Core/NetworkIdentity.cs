@@ -96,6 +96,10 @@ namespace Mirror
         // internal so NetworkManager can reset it from StopClient.
         internal bool clientStarted;
 
+        public bool requestingClientAuthority { get; internal set; }
+        public int _framesToWaitForAuth = 15;
+        internal int framesWaitingForAuth = 0;
+
         /// <summary>The set of network connections (players) that can see this object.</summary>
         public readonly Dictionary<int, NetworkConnectionToClient> observers =
             new Dictionary<int, NetworkConnectionToClient>();
@@ -107,6 +111,18 @@ namespace Mirror
         // persistent scene id <sceneHash/32,sceneId/32> (see AssignSceneID comments)
         [FormerlySerializedAs("m_SceneId"), HideInInspector]
         public ulong sceneId;
+
+        private void Update()
+        {
+            if (requestingClientAuthority && framesWaitingForAuth > 0)
+            {
+                framesWaitingForAuth--;
+            }
+            else if (requestingClientAuthority)
+            {
+                requestingClientAuthority = false;
+            }
+        }
 
         // assetId used to spawn prefabs across the network.
         // originally a Guid, but a 4 byte uint is sufficient
@@ -335,6 +351,11 @@ namespace Mirror
         // internal so we can call it during unit tests too.
         internal void Awake()
         {
+            if (!NetworkManager.singleton)
+            {
+                enabled = false;
+                return;
+            }
             // initialize NetworkBehaviour components.
             // Awake() is called immediately after initialization.
             // no one can overwrite it because NetworkIdentity is sealed.
@@ -1234,6 +1255,18 @@ namespace Mirror
             clientAuthorityCallback?.Invoke(conn, this, true);
 
             return true;
+        }
+
+        public void RequestingClientAuthority()
+        {
+            requestingClientAuthority = true;
+            framesWaitingForAuth = _framesToWaitForAuth;
+        }
+
+        public void RemoveRequestForClientAuthority()
+        {
+            requestingClientAuthority = false;
+            framesWaitingForAuth = 0;
         }
 
         // used when adding players

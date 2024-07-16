@@ -100,7 +100,7 @@ namespace Mirror
 
         // initialization //////////////////////////////////////////////////////
         // make sure to call this when inheriting too!
-        protected virtual void Awake() { }
+        protected override void Awake() { base.Awake(); }
 
         protected override void OnValidate()
         {

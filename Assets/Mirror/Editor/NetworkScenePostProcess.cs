@@ -22,6 +22,9 @@ namespace Mirror
             //    for some reason
             // => OfTypeAll so disabled objects are included too
             // => Unity 2019 returns prefabs here too, so filter them out.
+            bool isNetworkManagerActive = FindObjectsOfType<NetworkManager>().Any(nm => nm.isActiveAndEnabled);
+            if (!isNetworkManagerActive)
+                return;
             IEnumerable<NetworkIdentity> identities = Resources.FindObjectsOfTypeAll<NetworkIdentity>()
                 .Where(identity => identity.gameObject.hideFlags != HideFlags.NotEditable &&
                                    identity.gameObject.hideFlags != HideFlags.HideAndDontSave &&

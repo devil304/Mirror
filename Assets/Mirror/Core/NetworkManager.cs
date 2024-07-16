@@ -1,9 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using DG.Tweening;
+using SharedCode;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.Serialization;
+using Zenject;
 
 namespace Mirror
 {
@@ -14,6 +17,7 @@ namespace Mirror
     [DisallowMultipleComponent]
     [AddComponentMenu("Network/Network Manager")]
     [HelpURL("https://mirror-networking.gitbook.io/docs/components/network-manager")]
+    [DefaultExecutionOrder(-1000)]
     public class NetworkManager : MonoBehaviour
     {
         /// <summary>Enable to keep NetworkManager alive when changing scenes.</summary>
@@ -38,7 +42,7 @@ namespace Mirror
         public bool editorAutoStart;
 
         /// <summary>Server Update frequency, per second. Use around 60Hz for fast paced games like Counter-Strike to minimize latency. Use around 30Hz for games like WoW to minimize computations. Use around 1-10Hz for slow paced games like EVE.</summary>
-        [Tooltip("Server / Client send rate per second.\nUse 60-100Hz for fast paced games like Counter-Strike to minimize latency.\nUse around 30Hz for games like WoW to minimize computations.\nUse around 1-10Hz for slow paced games like EVE.")]
+        [Tooltip("Server & Client send rate per second. Use 60-100Hz for fast paced games like Counter-Strike to minimize latency. Use around 30Hz for games like WoW to minimize computations. Use around 1-10Hz for slow paced games like EVE.")]
         [FormerlySerializedAs("serverTickRate")]
         public int sendRate = 60;
 
@@ -174,6 +178,8 @@ namespace Mirror
         //    in other words, we need this to know which mode we are running in
         //    during FinishLoadScene.
         public NetworkManagerMode mode { get; private set; }
+
+        [Inject] private InjectablePrefab.Factory _factory;
 
         // virtual so that inheriting classes' OnValidate() can call base.OnValidate() too
         public virtual void OnValidate()
@@ -1356,8 +1362,16 @@ namespace Mirror
             }
         }
 
+        public Action<NetworkConnectionToClient> OnClientEnter = delegate (NetworkConnectionToClient conn) { };
+        public Action<NetworkConnectionToClient> OnClientEnterLate = delegate (NetworkConnectionToClient conn) { };
         /// <summary>Called on the server when a new client connects.</summary>
-        public virtual void OnServerConnect(NetworkConnectionToClient conn) { }
+        public virtual void OnServerConnect(NetworkConnectionToClient conn)
+        {
+            OnClientEnter?.Invoke(conn);
+            ExecuteAfter.Frames(60, () => OnClientEnterLate?.Invoke(conn));
+        }
+
+        public Action<NetworkConnectionToClient> OnClientLeft = delegate (NetworkConnectionToClient conn) { };
 
         /// <summary>Called on the server when a client disconnects.</summary>
         // Called by NetworkServer.OnTransportDisconnect!
@@ -1366,6 +1380,7 @@ namespace Mirror
             // by default, this function destroys the connection's player.
             // can be overwritten for cases like delayed logouts in MMOs to
             // avoid players escaping from PvP situations by logging out.
+            OnClientLeft?.Invoke(conn);
             NetworkServer.DestroyPlayerForConnection(conn);
             //Debug.Log("OnServerDisconnect: Client disconnected.");
         }
@@ -1386,9 +1401,12 @@ namespace Mirror
         public virtual void OnServerAddPlayer(NetworkConnectionToClient conn)
         {
             Transform startPos = GetStartPosition();
-            GameObject player = startPos != null
-                ? Instantiate(playerPrefab, startPos.position, startPos.rotation)
-                : Instantiate(playerPrefab);
+            GameObject player = _factory.Create(playerPrefab).gameObject;
+            if (startPos != null)
+            {
+                player.transform.position = startPos.position;
+                player.transform.rotation = startPos.rotation;
+            }
 
             // instantiating a "Player" prefab gives it the name "Player(clone)"
             // => appending the connectionId is WAY more useful for debugging!
@@ -1424,7 +1442,7 @@ namespace Mirror
         }
 
         /// <summary>Called on clients when disconnected from a server.</summary>
-        public virtual void OnClientDisconnect() { }
+        public virtual void OnClientDisconnect() { Application.Quit(); }
 
         // Deprecated 2023-12-05
         /// <summary>Deprecated: NetworkClient handles this now.</summary>

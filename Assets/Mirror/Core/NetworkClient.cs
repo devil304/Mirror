@@ -2,7 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Mirror.RemoteCalls;
+using SharedCode;
+using Sirenix.Utilities;
 using UnityEngine;
+using Zenject;
 
 namespace Mirror
 {
@@ -130,6 +133,8 @@ namespace Mirror
         public static float connectionQualityInterval = 3;
         static double lastConnectionQualityUpdate;
 
+        static ClientSpawnerHelper _clientSpawnerHelper;
+
         /// <summary>
         /// Invoked when connection quality changes.
         /// <para>First argument is the old quality, second argument is the new quality.</para>
@@ -189,6 +194,11 @@ namespace Mirror
 
             RegisterMessageHandlers(hostMode);
             Transport.active.enabled = true;
+        }
+
+        public static void RegisterSpawnerHelper(ClientSpawnerHelper clientSpawnerHelper)
+        {
+            _clientSpawnerHelper = clientSpawnerHelper;
         }
 
         /// <summary>Connect client to a NetworkServer by address.</summary>
@@ -326,7 +336,7 @@ namespace Mirror
                     }
                     else
                         Debug.LogWarning($"NetworkClient: failed to add batch.");
-                 
+
                     return;
                 }
 
@@ -562,10 +572,10 @@ namespace Mirror
             // so let's wrap it to ignore the NetworkConnection parameter.
             // it's not needed on client. it's always NetworkClient.connection.
             ushort msgType = NetworkMessageId<T>.Id;
-            
+
             // register Id <> Type in lookup for debugging.
             NetworkMessages.Lookup[msgType] = typeof(T);
-            
+
             void HandlerWrapped(NetworkConnection _, T value) => handler(_, value);
             handlers[msgType] = NetworkMessages.WrapHandler((Action<NetworkConnection, T>)HandlerWrapped, requireAuthentication, exceptionsDisconnect);
         }
@@ -580,10 +590,10 @@ namespace Mirror
             // so let's wrap it to ignore the NetworkConnection parameter.
             // it's not needed on client. it's always NetworkClient.connection.
             ushort msgType = NetworkMessageId<T>.Id;
-            
+
             // register Id <> Type in lookup for debugging.
             NetworkMessages.Lookup[msgType] = typeof(T);
-            
+
             void HandlerWrapped(NetworkConnection _, T value) => handler(value);
             handlers[msgType] = NetworkMessages.WrapHandler((Action<NetworkConnection, T>)HandlerWrapped, requireAuthentication, exceptionsDisconnect);
         }
@@ -598,10 +608,10 @@ namespace Mirror
             // so let's wrap it to ignore the NetworkConnection parameter.
             // it's not needed on client. it's always NetworkClient.connection.
             ushort msgType = NetworkMessageId<T>.Id;
-            
+
             // register Id <> Type in lookup for debugging.
             NetworkMessages.Lookup[msgType] = typeof(T);
-            
+
             void HandlerWrapped(NetworkConnection _, T value, int channelId) => handler(value, channelId);
             handlers[msgType] = NetworkMessages.WrapHandler((Action<NetworkConnection, T, int>)HandlerWrapped, requireAuthentication, exceptionsDisconnect);
         }
@@ -1232,7 +1242,18 @@ namespace Mirror
             // otherwise look in NetworkManager registered prefabs
             if (GetPrefab(message.assetId, out GameObject prefab))
             {
-                GameObject obj = GameObject.Instantiate(prefab, message.position, message.rotation);
+                GameObject obj = null;
+                if (prefab.TryGetComponent<InjectablePrefab>(out _))
+                {
+                    if (_clientSpawnerHelper != null && _clientSpawnerHelper.Ready)
+                    {
+                        obj = _clientSpawnerHelper.Create(prefab);
+                        obj.transform.position = message.position;
+                        obj.transform.rotation = message.rotation;
+                    }
+                }
+                else
+                    obj = GameObject.Instantiate(prefab, message.position, message.rotation);
                 //Debug.Log($"Client spawn handler instantiating [netId{message.netId} asset ID:{message.assetId} pos:{message.position} rotation:{message.rotation}]");
                 return obj.GetComponent<NetworkIdentity>();
             }
@@ -1664,6 +1685,19 @@ namespace Mirror
                 {
                     if (identity != null && identity.gameObject != null)
                     {
+
+                        bool hostOwned = identity.connectionToServer is LocalConnectionToServer;
+                        bool shouldDestroy = !identity.isServer || hostOwned;
+                        if (identity.isServer)
+                        {
+                            if (!identity.isLocalPlayer && shouldDestroy)
+                            {
+                                identity.RemoveClientAuthority();
+                                var nbs = identity.GetComponentsInChildren<NetworkBehaviour>(true);
+                                nbs.ForEach(nbs => nbs.syncDirection = SyncDirection.ServerToClient);
+                                shouldDestroy = false;
+                            }
+                        }
                         if (identity.isLocalPlayer)
                             identity.OnStopLocalPlayer();
 
@@ -1676,8 +1710,6 @@ namespace Mirror
                         // => that would destroy them other connection's objects
                         //    on the host server, making them disconnect.
                         // https://github.com/vis2k/Mirror/issues/2954
-                        bool hostOwned = identity.connectionToServer is LocalConnectionToServer;
-                        bool shouldDestroy = !identity.isServer || hostOwned;
                         if (shouldDestroy)
                         {
                             bool wasUnspawned = InvokeUnSpawnHandler(identity.assetId, identity.gameObject);

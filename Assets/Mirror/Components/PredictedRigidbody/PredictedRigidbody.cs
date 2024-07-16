@@ -115,8 +115,9 @@ namespace Mirror
 
         Color originalColor;
 
-        protected virtual void Awake()
+        protected override void Awake()
         {
+            base.Awake();
             tf = transform;
             predictedRigidbody = GetComponent<Rigidbody>();
             if (predictedRigidbody == null) throw new InvalidOperationException($"Prediction: {name} is missing a Rigidbody component.");
@@ -505,9 +506,9 @@ namespace Mirror
             if (isServer) UpdateServer();
             if (isClientOnly)
             {
-                 if (mode == PredictionMode.Smooth)
+                if (mode == PredictionMode.Smooth)
                     UpdateGhosting();
-                 else if (mode == PredictionMode.Fast)
+                else if (mode == PredictionMode.Fast)
                     UpdateState();
             }
         }
@@ -626,11 +627,11 @@ namespace Mirror
         }
 
         // optional user callbacks, in case people need to know about events.
-        protected virtual void OnSnappedIntoPlace() {}
-        protected virtual void OnBeforeApplyState() {}
-        protected virtual void OnCorrected() {}
-        protected virtual void OnBeginPrediction() {} // when the Rigidbody moved above threshold and we created a ghost
-        protected virtual void OnEndPrediction() {}   // when the Rigidbody came to rest and we destroyed the ghost
+        protected virtual void OnSnappedIntoPlace() { }
+        protected virtual void OnBeforeApplyState() { }
+        protected virtual void OnCorrected() { }
+        protected virtual void OnBeginPrediction() { } // when the Rigidbody moved above threshold and we created a ghost
+        protected virtual void OnEndPrediction() { }   // when the Rigidbody came to rest and we destroyed the ghost
 
         void ApplyState(double timestamp, Vector3 position, Quaternion rotation, Vector3 velocity, Vector3 angularVelocity)
         {
@@ -839,7 +840,7 @@ namespace Mirror
 
             // too far off? then correct it
             if (positionToInterpolatedDistanceSqr >= positionCorrectionThresholdSqr || // fast comparison
-                //positionToInterpolatedDistance >= positionCorrectionThreshold ||     // slow comparison
+                                                                                       //positionToInterpolatedDistance >= positionCorrectionThreshold ||     // slow comparison
                 rotationToInterpolatedDistance >= rotationCorrectionThreshold)
             {
                 // Debug.Log($"CORRECTION NEEDED FOR {name} @ {timestamp:F3}: client={interpolated.position} server={state.position} difference={difference:F3}");
@@ -898,8 +899,8 @@ namespace Mirror
                 rotation,
                 predictedRigidbody.velocity,
                 predictedRigidbody.angularVelocity);//,
-                // DO NOT SYNC SLEEPING! this cuts benchmark performance in half(!!!)
-                // predictedRigidbody.IsSleeping());
+                                                    // DO NOT SYNC SLEEPING! this cuts benchmark performance in half(!!!)
+                                                    // predictedRigidbody.IsSleeping());
             writer.WritePredictedSyncData(data);
         }
 

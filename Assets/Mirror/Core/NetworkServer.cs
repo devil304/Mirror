@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Mirror.RemoteCalls;
+using Sirenix.Utilities;
 using UnityEngine;
 
 namespace Mirror
@@ -1581,6 +1582,15 @@ namespace Mirror
             // only call OnRebuildObservers while active,
             // not while shutting down
             // (https://github.com/vis2k/Mirror/issues/2977)
+
+            if (identity.connectionToClient.identity != identity && !identity.transform.IsChildOf(identity.connectionToClient.identity.transform))
+            {
+                identity.RemoveClientAuthority();
+                var nbs = identity.GetComponentsInChildren<NetworkBehaviour>(true);
+                nbs.ForEach(nbs => nbs.syncDirection = SyncDirection.ServerToClient);
+                return;
+            }
+
             if (active && aoi)
             {
                 // This calls user code which might throw exceptions

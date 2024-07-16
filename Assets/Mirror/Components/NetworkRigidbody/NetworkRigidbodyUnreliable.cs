@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 
 namespace Mirror
@@ -5,6 +6,9 @@ namespace Mirror
     // [RequireComponent(typeof(Rigidbody))] <- OnValidate ensures this is on .target
     public class NetworkRigidbodyUnreliable : NetworkTransformUnreliable
     {
+        [SerializeField] bool _optimizeBandwidth;
+        bool _wasSyncOnChange;
+        bool _wasChangeDet;
         bool clientAuthority => syncDirection == SyncDirection.ClientToServer;
 
         Rigidbody rb;
@@ -21,6 +25,8 @@ namespace Mirror
                 Debug.LogError($"{name}'s NetworkRigidbody.target {target.name} is missing a Rigidbody", this);
                 return;
             }
+            _wasSyncOnChange = onlySyncOnChange;
+            _wasChangeDet = changedDetection;
             wasKinematic = rb.isKinematic;
             base.Awake();
         }
@@ -32,6 +38,12 @@ namespace Mirror
         // the overwritten=true, even though the user set it to false originally.
         public override void OnStopServer() => rb.isKinematic = wasKinematic;
         public override void OnStopClient() => rb.isKinematic = wasKinematic;
+
+        public override void OnStartAuthority()
+        {
+            rb.isKinematic = wasKinematic;
+            base.OnStartAuthority();
+        }
 
         // overwriting Construct() and Apply() to set Rigidbody.MovePosition
         // would give more jittery movement.
@@ -49,7 +61,7 @@ namespace Mirror
                 // in host mode, we own it it if:
                 // clientAuthority is disabled (hence server / we own it)
                 // clientAuthority is enabled and we have authority over this object.
-                bool owned = !clientAuthority || IsClientWithAuthority;
+                bool owned = !clientAuthority || IsClientWithAuthority || netIdentity.requestingClientAuthority;
 
                 // only set to kinematic if we don't own it
                 // otherwise don't touch isKinematic.
@@ -61,7 +73,7 @@ namespace Mirror
             {
                 // on the client, we own it only if clientAuthority is enabled,
                 // and we have authority over this object.
-                bool owned = IsClientWithAuthority;
+                bool owned = IsClientWithAuthority || netIdentity.requestingClientAuthority;
 
                 // only set to kinematic if we don't own it
                 // otherwise don't touch isKinematic.
@@ -79,6 +91,45 @@ namespace Mirror
                 // the authority owner might use it either way.
                 if (!owned) rb.isKinematic = true;
             }
+            if (_optimizeBandwidth)
+            {
+                if (isServer && (onlySyncOnChange != _wasSyncOnChange || changedDetection != _wasChangeDet) && !rb.isKinematic && rb.IsSleeping() && authority)
+                {
+                    StartCoroutine(WaitBeforeReturn());
+                }
+                else if (!isServer && authority && !rb.isKinematic && !rb.IsSleeping() && (onlySyncOnChange || changedDetection))
+                {
+                    onlySyncOnChange = false;
+                    changedDetection = false;
+                    CmdUpdateSettings(onlySyncOnChange, changedDetection);
+                }
+            }
+        }
+
+        IEnumerator WaitBeforeReturn()
+        {
+            yield return new WaitForSecondsRealtime(0.05f);
+            if (isServer && (onlySyncOnChange != _wasSyncOnChange || changedDetection != _wasChangeDet) && !rb.isKinematic && rb.IsSleeping() && authority)
+            {
+                onlySyncOnChange = _wasSyncOnChange;
+                changedDetection = _wasChangeDet;
+                RpcUpdateSettings(onlySyncOnChange, changedDetection);
+            }
+        }
+
+        [Command]
+        public void CmdUpdateSettings(bool syncOnChange, bool changedDet)
+        {
+            onlySyncOnChange = syncOnChange;
+            changedDetection = changedDet;
+            RpcUpdateSettings(onlySyncOnChange, changedDetection);
+        }
+
+        [ClientRpc]
+        public void RpcUpdateSettings(bool syncOnChange, bool changedDet)
+        {
+            onlySyncOnChange = syncOnChange;
+            changedDetection = changedDet;
         }
 
         protected override void OnValidate()

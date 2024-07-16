@@ -324,7 +324,8 @@ namespace Mirror
 
             // interpolate & apply
             TransformSnapshot computed = TransformSnapshot.Interpolate(from, to, t);
-            Apply(computed, to);
+            if (!netIdentity.requestingClientAuthority)
+                Apply(computed, to);
         }
 
         public override void OnSerialize(NetworkWriter writer, bool initialState)
@@ -519,7 +520,7 @@ namespace Mirror
             }
 
             if (syncRotation)
-            { 
+            {
                 if (compressRotation)
                 {
                     bool rotationChanged = Quaternion.Angle(lastSnapshot.rotation, currentSnapshot.rotation) > rotationSensitivity;
