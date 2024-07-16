@@ -98,21 +98,14 @@ namespace Mirror
         public bool showOverlay;
         public Color overlayColor = new Color(0, 0, 0, 0.5f);
 
+        // initialization //////////////////////////////////////////////////////
+        // make sure to call this when inheriting too!
+        protected override void Awake() { base.Awake(); }
+
         protected override void OnValidate()
         {
-            // Skip if Editor is in Play mode
-            if (Application.isPlaying) return;
-
             base.OnValidate();
 
-            // configure in awake
-            Configure();
-        }
-
-        // initialization //////////////////////////////////////////////////////
-        // forcec configuration of some settings
-        protected virtual void Configure()
-        {
             // set target to self if none yet
             if (target == null) target = transform;
 
@@ -126,14 +119,6 @@ namespace Mirror
             // Unity doesn't support setting world scale.
             // OnValidate force disables syncScale in world mode.
             if (coordinateSpace == CoordinateSpace.World) syncScale = false;
-        }
-
-        // make sure to call this when inheriting too!
-        protected virtual void Awake()
-        {
-            // sometimes OnValidate() doesn't run before launching a project.
-            // need to guarantee configuration runs.
-            Configure();
         }
 
         // snapshot functions //////////////////////////////////////////////////
@@ -347,7 +332,8 @@ namespace Mirror
             // but server's last delta will have been reset, causing offsets.
             //
             // instead, simply clear snapshots.
-            ResetState();
+            serverSnapshots.Clear();
+            clientSnapshots.Clear();
 
             // TODO
             // what if we still receive a snapshot from before the interpolation?
@@ -372,7 +358,8 @@ namespace Mirror
             // but server's last delta will have been reset, causing offsets.
             //
             // instead, simply clear snapshots.
-            ResetState();
+            serverSnapshots.Clear();
+            clientSnapshots.Clear();
 
             // TODO
             // what if we still receive a snapshot from before the interpolation?

@@ -74,6 +74,7 @@ namespace Mirror
 
         void Initialize()
         {
+            base.Awake();
             // store the animator parameters in a variable - the "Animator.parameters" getter allocates
             // a new parameter array every time it is accessed so we should avoid doing it in a loop
             parameters = animator.parameters
@@ -91,7 +92,7 @@ namespace Mirror
         // fix https://github.com/MirrorNetworking/Mirror/issues/2810
         // both Awake and Enable need to initialize arrays.
         // in case users call SetActive(false) -> SetActive(true).
-        void Awake() => Initialize();
+        protected override void Awake() => Initialize();
         void OnEnable() => Initialize();
 
         public virtual void Reset()

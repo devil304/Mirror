@@ -6,6 +6,7 @@ namespace Mirror
     [DisallowMultipleComponent]
     [AddComponentMenu("Network/Network Start Position")]
     [HelpURL("https://mirror-networking.gitbook.io/docs/components/network-start-position")]
+    [DefaultExecutionOrder(1000)]
     public class NetworkStartPosition : MonoBehaviour
     {
         public void Awake()
