@@ -192,7 +192,9 @@ namespace Mirror
         static void AddTransportHandlers()
         {
             // += so that other systems can also hook into it (i.e. statistics)
+#pragma warning disable CS0618 // Type or member is obsolete
             Transport.active.OnServerConnected += OnTransportConnected;
+#pragma warning restore CS0618 // Type or member is obsolete
             Transport.active.OnServerConnectedWithAddress += OnTransportConnectedWithAddress;
             Transport.active.OnServerDataReceived += OnTransportData;
             Transport.active.OnServerDisconnected += OnTransportDisconnected;
@@ -265,7 +267,9 @@ namespace Mirror
         static void RemoveTransportHandlers()
         {
             // -= so that other systems can also hook into it (i.e. statistics)
+#pragma warning disable CS0618 // Type or member is obsolete
             Transport.active.OnServerConnected -= OnTransportConnected;
+#pragma warning restore CS0618 // Type or member is obsolete
             Transport.active.OnServerConnectedWithAddress -= OnTransportConnectedWithAddress;
             Transport.active.OnServerDataReceived -= OnTransportData;
             Transport.active.OnServerDisconnected -= OnTransportDisconnected;
