@@ -23,14 +23,21 @@ using UnityEngine;
 namespace Mirror
 {
     public enum CoordinateSpace { Local, World }
+    public enum UpdateMethod { Update, FixedUpdate, LateUpdate }
 
     public abstract class NetworkTransformBase : NetworkBehaviour
     {
+        internal TransformSnapshot? pendingSnapshot;
+
         // target transform to sync. can be on a child.
         // TODO this field is kind of unnecessary since we now support child NetworkBehaviours
         [Header("Target")]
         [Tooltip("The Transform component to sync. May be on on this GameObject, or on a child.")]
         public Transform target;
+
+        [Header("Base Settings")]
+        [Tooltip("Select which Update method to use.\nSelect FixedUpdate for non-kinematic rigidbodies.")]
+        public UpdateMethod updateMethod = UpdateMethod.Update;
 
         // Is this a client with authority over this transform?
         // This component could be on the player object or any object that has been assigned authority to this client.
@@ -67,14 +74,41 @@ namespace Mirror
         [Tooltip("Local by default. World may be better when changing hierarchy, or non-NetworkTransforms root position/rotation/scale values.")]
         public CoordinateSpace coordinateSpace = CoordinateSpace.Local;
 
-        [Header("Send Interval Multiplier")]
-        [Tooltip("Check/Sync every multiple of Network Manager send interval (= 1 / NM Send Rate), instead of every send interval.\n(30 NM send rate, and 3 interval, is a send every 0.1 seconds)\nA larger interval means less network sends, which has a variety of upsides. The drawbacks are delays and lower accuracy, you should find a nice balance between not sending too much, but the results looking good for your particular scenario.")]
-        [Range(1, 120)]
-        public uint sendIntervalMultiplier = 1;
+        // convert syncInterval to sendIntervalMultiplier.
+        // in the future this can be moved into core to support tick aligned Sync,
+        public uint sendIntervalMultiplier
+        {
+            get
+            {
+                if (syncInterval > 0)
+                {
+                    // if syncInterval is > 0, calculate how many multiples of NetworkManager.sendRate it is
+                    //
+                    // for example:
+                    //   NetworkServer.sendInterval is 1/60 = 0.16
+                    //   NetworkTransform.syncInterval is 0.5 (500ms).
+                    //   0.5 / 0.16 = 3.125
+                    //   in other words: 3.125 x sendInterval
+                    //
+                    // note that NetworkServer.sendInterval is usually set on start.
+                    // to make this work in Edit mode, make sure that NetworkManager
+                    // OnValidate sets NetworkServer.sendInterval immediately.
+                    float multiples = syncInterval / NetworkServer.sendInterval;
+
+                    // syncInterval is always supposed to sync at a minimum of 1 x sendInterval.
+                    // that's what we do for every other NetworkBehaviour since
+                    // we only sync in Broadcast() which is called @ sendInterval.
+                    return multiples > 1 ? (uint)Mathf.RoundToInt(multiples) : 1;
+                }
+
+                // if syncInterval is 0, use NetworkManager.sendRate (x1)
+                return 1;
+            }
+        }
 
         [Header("Timeline Offset")]
         [Tooltip("Add a small timeline offset to account for decoupled arrival of NetworkTime and NetworkTransform snapshots.\nfixes: https://github.com/MirrorNetworking/Mirror/issues/3427")]
-        public bool timelineOffset = false;
+        public bool timelineOffset = true;
 
         // Ninja's Notes on offset & mulitplier:
         //
@@ -92,6 +126,11 @@ namespace Mirror
         protected double timeStampAdjustment => NetworkServer.sendInterval * (sendIntervalMultiplier - 1);
         protected double offset => timelineOffset ? NetworkServer.sendInterval * sendIntervalMultiplier : 0;
 
+        // velocity for convenience (animators etc.)
+        // this isn't technically NetworkTransforms job, but it's needed by so many projects that we just provide it anyway.
+        public Vector3 velocity { get; private set; }
+        public Vector3 angularVelocity { get; private set; }
+
         // debugging ///////////////////////////////////////////////////////////
         [Header("Debug")]
         public bool showGizmos;
@@ -106,15 +145,19 @@ namespace Mirror
         {
             base.OnValidate();
 
+            // configure in awake
+            Configure();
+        }
+
+        // For NetworkBehaviourInspector
+        internal override bool showSyncMethod() => false;
+
+        // initialization //////////////////////////////////////////////////////
+        // forcec configuration of some settings
+        protected virtual void Configure()
+        {
             // set target to self if none yet
             if (target == null) target = transform;
-
-            // time snapshot interpolation happens globally.
-            // value (transform) happens in here.
-            // both always need to be on the same send interval.
-            // force the setting to '0' in OnValidate to make it obvious that we
-            // actually use NetworkServer.sendInterval.
-            syncInterval = 0;
 
             // Unity doesn't support setting world scale.
             // OnValidate force disables syncScale in world mode.
@@ -228,6 +271,14 @@ namespace Mirror
             // -> but simply don't apply it. if the user doesn't want to sync
             //    scale, then we should not touch scale etc.
 
+            // calculate the velocity and angular velocity for the object
+            // these can be used to drive animations or other behaviours
+            if (!isOwned && Time.deltaTime > 0)
+            {
+                velocity = (transform.localPosition - interpolated.position) / Time.deltaTime;
+                angularVelocity = (transform.localRotation.eulerAngles - interpolated.rotation.eulerAngles) / Time.deltaTime;
+            }
+
             // interpolate parts
             if (syncPosition) SetPosition(interpolatePosition ? interpolated.position : endGoal.position);
             if (syncRotation) SetRotation(interpolateRotation ? interpolated.rotation : endGoal.rotation);
@@ -310,6 +361,14 @@ namespace Mirror
             OnTeleport(destination, rotation);
         }
 
+        // teleport on server, broadcast to clients.
+        [Server]
+        public void ServerTeleport(Vector3 destination, Quaternion rotation)
+        {
+            OnTeleport(destination, rotation);
+            RpcTeleport(destination, rotation);
+        }
+
         [ClientRpc]
         void RpcResetState()
         {
@@ -373,6 +432,10 @@ namespace Mirror
             // so let's clear the buffers.
             serverSnapshots.Clear();
             clientSnapshots.Clear();
+
+            // Prevent resistance from CharacterController
+            // or non-knematic Rigidbodies when teleporting.
+            Physics.SyncTransforms();
         }
 
         public virtual void Reset()
@@ -380,6 +443,9 @@ namespace Mirror
             ResetState();
             // default to ClientToServer so this works immediately for users
             syncDirection = SyncDirection.ClientToServer;
+
+            // default to 20Hz, 20 sends per second if data has changed.
+            syncInterval = 0.05f;
         }
 
         protected virtual void OnEnable()
@@ -415,8 +481,8 @@ namespace Mirror
             }
         }
 
+#if UNITY_EDITOR || (!UNITY_SERVER && DEBUG)
         // OnGUI allocates even if it does nothing. avoid in release.
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
         // debug ///////////////////////////////////////////////////////////////
         protected virtual void OnGUI()
         {

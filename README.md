@@ -13,15 +13,14 @@
 </p>
 
 **It's only the dreamers who ever move mountains.**
-
-<img src="https://user-images.githubusercontent.com/16416509/119117854-3e4e2b80-ba5c-11eb-8236-ce6cfd2b6b07.png" title="Original Concept Art for Games that made us dream. Copyright Blizzard, Blizzard, Riot Games, Joymax in that order."/>
+![mmos_conceptart](https://github.com/user-attachments/assets/a95f2229-2f07-4c8c-9245-93a5e8004b7d)
 
 ## Mirror Networking 
-The **#1** free **open source** game networking library for **Unity 2019 / 2020 / 2021 / 2022 LTS**.
+The **#1** free **open source** game networking library for **Unity 2019 / 2020 / 2021 / 2022 / 6**.
 
 Used **in production** by major hits like [**Population: ONE**](https://www.populationonevr.com/) and many [**more**](#made-with-mirror).
 
-Originally based on [**UNET**](https://blog.unity.com/technology/announcing-unet-new-unity-multiplayer-technology): battle tested **since 2014** for 10 years and counting!
+Originally based on [**UNET**](https://web.archive.org/web/20230915050929/https://blog.unity.com/technology/announcing-unet-new-unity-multiplayer-technology): battle tested **since 2014** for 10 years and counting!
 
 Mirror is **[stable](https://mirror-networking.gitbook.io/docs/general/tests)**, [**modular**](#low-level-transports) & **[easy to use](https://mirror-networking.gitbook.io/)** for all types of games, even small [**MMORPGs**](#made-with-mirror) 🎮.
 
@@ -41,25 +40,27 @@ Many of our features quickly became the norm across all Unity netcodes!<br>
 | 🐌 **Latency Simulation**     | Simulate latency, packet loss & jitter locally.                                                                                                               | **Stable**      |
 | 🧲 **Batching**               | Minimize message overhead via batching automatically.                                                                                                         | **Stable**      |
 | 💌 **RPCs & SyncVars**        | Synced vars and remote function calls built in & safe.                                                                                                        | **Stable**      |
-| 🙅‍♀️**Allocation Free**      | Free of runtime allocations and no GC (except Transports).                                                                                                    | **Stable**      |
-| 🛞  **Transform & Physics**   | Transform & Physics sync built in.                                                                                                                            | **Stable**      |
+| 🙅‍♀️ **Allocation Free**      | Free of runtime allocations and no GC (except Transports).                                                                                                    | **Stable**      |
+| 🛞 **Transform & Physics**   | Transform & Physics sync built in.                                                                                                                            | **Stable**      |
 | 👩‍🍼 **Child Components**    | Put networked components on anything.                                                                                                                         | **Stable**      |
 | 🪚️ **IL Post Processing**    | Zero overhead [Rpcs] and [Commands] via IL post processing!                                                                                                   | **Stable**      |
-| ☁️ **Two Click Hosting**      | (Optional) <a href="https://mirror-networking.gitbook.io/docs/hosting/edgegap-hosting-plugin-guide">Build & Push</a> directly from Unity Editor to the Cloud. | **Preview**     |
+| ☁️ **Two Click Hosting**      | (Optional) <a href="https://mirror-networking.gitbook.io/docs/hosting/edgegap-hosting-plugin-guide">Build & Push</a> directly from Unity Editor to the Cloud. | **Stable**     |
 |                               |                                                                                                                                                               |                 |
-| 📏 **Snapshot Interp.**       | Perfectly smooth movement for all platforms and all games.                                                                                                    | **Stable**      |
-| 🏎 **Fast Prediction**        | Simulate Physics locally & apply server corrections **[VR ready]**                                                                                            | **Beta**        |
+| 📏 **Snapshot Interpolation**       | Perfectly smooth movement for all platforms & genres.                                                                                                    | **Stable**      |
 | 🔫 **Lag Compensation**       | Roll back state to see what the player saw during input.                                                                                                      | **Beta**     |
+| 🔒 **Encryption**             | Secure communication with end-to-end encryption.                                                                                                              | **Beta** |
+| 🔒 **Cheat Detection**        | Mirror Guard safely detects Melon Loader & more.                                                                                                              | **Beta** |
+| 🚀 **Unreliable Mode**       | Quake style Unreliable SyncMode for any component.                                                                                                      | **Development**     |
 |                               |                                                                                                                                                               |                 |
 | 🧙‍♂️ **General Purpose**     | Mirror supports all genres for all your games!                                                                                                                |                 |
 | 🧘‍♀️ **Stable API**          | Long term (10 years)  stability instead of new versions!                                                                                                      |
-| 🔬 **Battle Tested**          | Mirror servers over 100 million players. It just works!                                                                                                       |                 |
+| 🔬 **Battle Tested**          | Mirror serves over 100 million players. It just works!                                                                                                        |                 |
 | 💴 **Free & Open Source**     | MIT licensed without any restrictions to minimize risk!                                                                                                       |                 |
 | ❤️ **Community**              | Join our Discord with nearly 15.000 developers world wide!                                                                                                    |                 |
 | 🧜🏻‍♀️ **Long Term Support** | Maintained since 2014 with optional LTS version!                                                                                                              |                 |
 |                               |                                                                                                                                                               |                 |
-| 🔒 **Encryption**             | Secure communication with end-to-end encryption.                                                                                                              | **Preview** |
 | 📐 **Bitpacking**             | Optimized compression (bools as 1 bit etc.)                                                                                                                   | **Researching** |
+| 🏎 **Prediction**             | Simulate Physics locally & apply server corrections.                                                                                                          | **Researching**        |
 
 ---
 ## Architecture
@@ -119,23 +120,18 @@ _The top quote is from Fitzcarraldo, which is quite reminiscent of this project.
 
 ---
 ## Getting Started
-Get **Unity 2019 / 2020 / 2021 / 2022 LTS**, [Download Mirror](https://assetstore.unity.com/packages/tools/network/mirror-129321), open one of the examples & press Play!
+Get **Unity 2019 / 2020 / 2021 / 2022 LTS and 6000.1**, [Download Mirror](https://assetstore.unity.com/packages/tools/network/mirror-129321), open one of the examples & press Play!
 
 Check out our [Documentation](https://mirror-networking.gitbook.io/) to learn how it all works.
 
 If you are migrating from UNET, then please check out our [Migration Guide](https://mirror-networking.gitbook.io/docs/general/migration-guide).
 
 ---
-## Mirror LTS (Long Term Support)
-Mirror LTS is available on the [Asset Store](https://assetstore.unity.com/packages/tools/network/mirror-lts-102631).
+## Guard - Anti Cheat 🔒
+![2000x630](https://github.com/user-attachments/assets/34b5dce3-d137-4c36-b7d6-ebed62fadb7e)
+Guard is a high impact, zero risk anti-cheat solution built specifically for Unity games. Unlike most commercial anti-cheats, Guard is embedded on the source code level and compiles with your project.
 
-Mirror LTS gives you peace of mind to run your game in production.
-Without any breaking changes, ever!
-
-* **Bug fixes** only. 
-* **Consistent API**: update any time, without any breaking features.
-* Lives along side **Unity 2019/2020/2021** LTS.
-* Supported for two years at a time.
+Guard is available on the [Asset Store](https://assetstore.unity.com/packages/tools/network/guard-multiplayer-anti-cheat-321434) and includes a Mirror Integration!
 
 ---
 ## Made with Mirror
@@ -161,6 +157,12 @@ SWARM is a fast-paced, arcade-style grapple shooter, with quick sessions, bright
 
 Available for the [Meta Quest](https://www.oculus.com/experiences/quest/2236053486488156/), made with Mirror.
 
+### [Liars Bar](https://store.steampowered.com/app/3097560/Liars_Bar/)
+[![liarsbar](https://github.com/user-attachments/assets/9100563e-2d9f-44f6-b8c2-332f718b8190)](https://store.steampowered.com/app/3097560/Liars_Bar/)<br/>
+With over 20.000 Overwhelmingly Positive reviews on Steam, Liars Bar is one of our largest showcase games of 2024.<br/>
+<br/>
+This isn't your average pub – it's a den of lies, deception, and mind games. Grab a seat at a table of four and immerse yourself in the ultimate first-person multiplayer online experience where cunning and trickery are the name of the game.
+
 ### [Castaways](https://www.castaways.com/)
 [![Castaways](https://user-images.githubusercontent.com/16416509/207313082-e6b95590-80c6-4685-b0d1-f1c39c236316.png)](https://www.castaways.com/)
 [Castaways](https://www.castaways.com/) is a sandbox game where you are castaway to a small remote island where you must work with others to survive and build a thriving new civilization. 
@@ -172,6 +174,12 @@ Castaway runs in the Browser, thanks to Mirror's WebGL support.
 Nudge Nudge Games' first title: the colorful, post-apocalyptic open world sandbox game [Nimoyd](https://store.steampowered.com/app/1313210/Nimoyd__Survival_Sandbox/) is being developed with Mirror.
 
 _Soon to be released for PC & mobile!_
+
+### [Project Z](https://www.projektzgame.com/)
+[![projectz](https://github.com/user-attachments/assets/50423fa6-982e-41ed-8a43-4823bf111818)](https://www.projektzgame.com/)
+Projekt Z is a first-person coop survival shooter set in a WW2 Zombie scenario on a secret German island. The game focuses on the threat of "Projekt Z", a clandestine program run by the Nazis to turn Zombies, which have been discovered on the island earlier, into weapons to help turn the tide of the war in Nazi Germany's favor.<br/>
+<br/>
+_Soon to be released!_
 
 ### [Unleashed](https://www.unleashedgames.io/)
 [![unleashed](https://github.com/MirrorNetworking/Mirror/assets/16416509/ef3bcf74-8fa9-4d22-801d-4d29cb59a013)](https://www.unleashedgames.io/)
@@ -278,6 +286,8 @@ The [France based team](https://naicaonline.com/en/news/view/1) was one of Mirro
 <a href="https://store.steampowered.com/app/1955340/Super_Raft_Boat_Together"><img src="https://github.com/MirrorNetworking/Mirror/assets/57072365/0d30b84a-0b2b-4790-8687-d95e2fa23df1" title="Super Raft Boat Together" height="100"/></a>
 <a href="https://store.steampowered.com/app/2585860/Ruins_To_Fortress/"><img src="https://github.com/MirrorNetworking/Mirror/assets/16416509/258ac5cf-d359-46cd-8af4-c7c1844dba9c" title="Ruins to Fortress" height="100"/></a>
 <a href="https://store.steampowered.com/app/2967080/Block_Trucks_Multiplayer_Racing/"><img src="https://github.com/user-attachments/assets/120794c6-81c2-445c-8f9b-b2be2bada376" title="Block Trucks" height="100"/></a>
+<a href="https://nebula-dev.itch.io/drunkonauts"><img src="https://github.com/user-attachments/assets/fef572da-dfd4-49af-8062-c072793a6a26" title="Drunkonauts" height="100"/></a>
+
 
 ## Modular Transports
 Mirror uses **KCP** (reliable UDP) by default, but you may use any of our community transports for low level packet sending:
@@ -288,10 +298,9 @@ Mirror uses **KCP** (reliable UDP) by default, but you may use any of our commun
 * [LiteNetLib](https://github.com/MirrorNetworking/LiteNetLibTransport/) UDP
 * [FizzySteam](https://github.com/Chykary/FizzySteamworks/): SteamNetwork
 * [FizzyFacepunch](https://github.com/Chykary/FizzyFacepunch/): SteamNetwork
-* [Epic Relay](https://github.com/FakeByte/EpicOnlineTransport): Epic Online Services
+* [Epic Relay](https://github.com/WeLoveJesusChrist/EOSTransport): Epic Online Services
 * [Bubble](https://github.com/Squaresweets/BubbleTransport): Apple GameCenter
 * [Light Reflective Mirror](https://github.com/Derek-R-S/Light-Reflective-Mirror): Self-Hosted Relay
-* [Oculus P2P](https://github.com/hyferg/MirrorOculusP2P): Oculus Platform Service
 
 ## Benchmarks
 * [2022] mischa [400-800 CCU](https://discord.com/channels/343440455738064897/1007519701603205150/1019879180592238603) tests

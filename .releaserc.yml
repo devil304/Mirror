@@ -11,12 +11,14 @@ plugins:
   - - '@semantic-release/commit-analyzer'
     - preset: "angular"
       releaseRules:
-      - type: "breaking"
-        release: "major"
       - type: "release"
         release: "major"
+      - type: "breaking"
+        release: "minor"
       - type: "feature"
         release: "minor"
+      - type: "fix"
+        release: "patch"
 
   # Extends the behavior of semantic-release to generate release notes.
   # 'fix' and 'feat' are built in and don't need to be defined here.
@@ -40,6 +42,9 @@ plugins:
         - type: "feature"
           section: "Features"
           hidden: false
+        - type: "perf"
+          section: "Performance Improvements"
+          hidden: false
 
   # Write the new version in version.txt
   - - '@semantic-release/exec'
@@ -52,8 +57,8 @@ plugins:
   
   # Remove EdgeGap Hosting folder so it's excluded from Unity package
   # -f: force, -r: recursive
-  - - '@semantic-release/exec'
-    - prepareCmd: "rm -f -r Assets/Mirror/Hosting && rm -f Assets/Mirror/Hosting.meta"
+  # - - '@semantic-release/exec'
+  #   - prepareCmd: "rm -f -r Assets/Mirror/Hosting && rm -f Assets/Mirror/Hosting.meta"
   
   # Move ScriptTemplates to Mirror folder so they're included in Unity package
   # There's an editor script that moves them back to Assets when imported to Unity
@@ -70,3 +75,7 @@ plugins:
       - path: "Mirror.unitypackage"
         label: "Mirror Unity Package"
         name: "Mirror-${nextRelease.version}.unitypackage"
+      successComment: "false"
+      successCommentCondition: "false"
+      failComment: "false"
+      failCommentCondition: "false"

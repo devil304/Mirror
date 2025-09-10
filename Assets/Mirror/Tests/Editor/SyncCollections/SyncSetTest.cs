@@ -77,6 +77,7 @@ namespace Mirror.Tests.SyncCollections
             Assert.That(serverSyncSetDirtyCalled, Is.EqualTo(1));
             SerializeDeltaTo(serverSyncSet, clientSyncSet);
             Assert.That(clientSyncSet, Is.EquivalentTo(new[] { "Hello", "World", "!", "yay" }));
+            Assert.That(clientSyncSetDirtyCalled, Is.EqualTo(1));
         }
 
         [Test]
@@ -86,22 +87,12 @@ namespace Mirror.Tests.SyncCollections
             Assert.That(serverSyncSetDirtyCalled, Is.EqualTo(1));
             SerializeDeltaTo(serverSyncSet, clientSyncSet);
             Assert.That(clientSyncSet, Is.EquivalentTo(new[] { "Hello", "!" }));
+            Assert.That(clientSyncSetDirtyCalled, Is.EqualTo(1));
         }
 
         [Test]
         public void TestClear()
         {
-#pragma warning disable 618 // Type or member is obsolete
-            bool called = false;
-            clientSyncSet.Callback = (op, item) =>
-            {
-                called = true;
-
-                Assert.That(op, Is.EqualTo(SyncHashSet<string>.Operation.OP_CLEAR));
-                Assert.That(clientSyncSet.Count, Is.EqualTo(3));
-            };
-#pragma warning restore 618 // Type or member is obsolete
-
             bool actionCalled = false;
             clientSyncSet.OnClear  = () =>
             {
@@ -120,7 +111,6 @@ namespace Mirror.Tests.SyncCollections
             serverSyncSet.Clear();
             SerializeDeltaTo(serverSyncSet, clientSyncSet);
             Assert.That(clientSyncSet, Is.EquivalentTo(new string[] { }));
-            Assert.That(called, Is.True);
             Assert.That(actionCalled, Is.True);
             Assert.That(changeActionCalled, Is.True);
         }
@@ -139,17 +129,6 @@ namespace Mirror.Tests.SyncCollections
         [Test]
         public void CallbackTest()
         {
-#pragma warning disable 618 // Type or member is obsolete
-            bool called = false;
-            clientSyncSet.Callback = (op, item) =>
-            {
-                called = true;
-
-                Assert.That(op, Is.EqualTo(SyncHashSet<string>.Operation.OP_ADD));
-                Assert.That(item, Is.EqualTo("yay"));
-            };
-#pragma warning restore 618 // Type or member is obsolete
-
             bool actionCalled = false;
             clientSyncSet.OnAdd = (item) =>
             {
@@ -158,16 +137,15 @@ namespace Mirror.Tests.SyncCollections
             };
 
             bool changeActionCalled = false;
-            clientSyncSet.OnChange = (op, item) =>
+            clientSyncSet.OnChange = (op, newItem) =>
             {
                 changeActionCalled = true;
                 Assert.That(op, Is.EqualTo(SyncHashSet<string>.Operation.OP_ADD));
-                Assert.That(item, Is.EqualTo("yay"));
+                Assert.That(newItem, Is.EqualTo("yay"));
             };
 
             serverSyncSet.Add("yay");
             SerializeDeltaTo(serverSyncSet, clientSyncSet);
-            Assert.That(called, Is.True);
             Assert.That(actionCalled, Is.True);
             Assert.That(changeActionCalled, Is.True);
         }
@@ -175,17 +153,6 @@ namespace Mirror.Tests.SyncCollections
         [Test]
         public void CallbackRemoveTest()
         {
-#pragma warning disable 618 // Type or member is obsolete
-            bool called = false;
-            clientSyncSet.Callback = (op, item) =>
-            {
-                called = true;
-
-                Assert.That(op, Is.EqualTo(SyncHashSet<string>.Operation.OP_REMOVE));
-                Assert.That(item, Is.EqualTo("World"));
-            };
-#pragma warning restore 618 // Type or member is obsolete
-
             bool actionCalled = false;
             clientSyncSet.OnRemove = (oldItem) =>
             {
@@ -194,16 +161,15 @@ namespace Mirror.Tests.SyncCollections
             };
 
             bool changeActionCalled = false;
-            clientSyncSet.OnChange = (op, item) =>
+            clientSyncSet.OnChange = (op, oldItem) =>
             {
                 changeActionCalled = true;
                 Assert.That(op, Is.EqualTo(SyncHashSet<string>.Operation.OP_REMOVE));
-                Assert.That(item, Is.EqualTo("World"));
+                Assert.That(oldItem, Is.EqualTo("World"));
             };
 
             serverSyncSet.Remove("World");
             SerializeDeltaTo(serverSyncSet, clientSyncSet);
-            Assert.That(called, Is.True);
             Assert.That(actionCalled, Is.True);
             Assert.That(changeActionCalled, Is.True);
         }

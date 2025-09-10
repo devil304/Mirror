@@ -32,35 +32,30 @@ namespace Mirror
         [Tooltip("Multiplayer games should always run in the background so the network doesn't time out.")]
         public bool runInBackground = true;
 
-        /// <summary>Should the server auto-start when 'Server Build' is checked in build settings</summary>
         [Header("Auto-Start Options")]
 
+        /// <summary>Should the server auto-start when 'Server Build' is checked in build settings</summary>
         [Tooltip("Choose whether Server or Client should auto-start in headless builds")]
         public HeadlessStartOptions headlessStartMode = HeadlessStartOptions.DoNothing;
 
         [Tooltip("Headless Start Mode in Editor\nwhen enabled, headless start mode will be used in editor as well.")]
         public bool editorAutoStart;
 
+        [Header("Sync Settings")]
         /// <summary>Server Update frequency, per second. Use around 60Hz for fast paced games like Counter-Strike to minimize latency. Use around 30Hz for games like WoW to minimize computations. Use around 1-10Hz for slow paced games like EVE.</summary>
         [Tooltip("Server & Client send rate per second. Use 60-100Hz for fast paced games like Counter-Strike to minimize latency. Use around 30Hz for games like WoW to minimize computations. Use around 1-10Hz for slow paced games like EVE.")]
         [FormerlySerializedAs("serverTickRate")]
         public int sendRate = 60;
 
-        // Deprecated 2023-11-25
-        // Using SerializeField and HideInInspector to self-correct for being
-        // replaced by headlessStartMode. This can be removed in the future.
-        // See OnValidate() for how we handle this.
-        [Obsolete("Deprecated - Use headlessStartMode instead.")]
-        [FormerlySerializedAs("autoStartServerBuild"), SerializeField, HideInInspector]
-        public bool autoStartServerBuild = true;
+        /// <summary> </summary>
+        [Tooltip("Ocassionally send a full reliable state for unreliable components to delta compress against. This only applies to Components with SyncMethod=Unreliable.")]
+        public int unreliableBaselineRate = 1;
 
-        // Deprecated 2023-11-25
-        // Using SerializeField and HideInInspector to self-correct for being
-        // replaced by headlessStartMode. This can be removed in the future.
-        // See OnValidate() for how we handle this.
-        [Obsolete("Deprecated - Use headlessStartMode instead.")]
-        [FormerlySerializedAs("autoConnectClientBuild"), SerializeField, HideInInspector]
-        public bool autoConnectClientBuild;
+        // quake sends unreliable messages twice to make up for message drops.
+        // this double bandwidth, but allows for smaller buffer time / faster sync.
+        // best to turn this off unless the game is extremely fast paced.
+        [Tooltip("Send unreliable messages twice to make up for message drops. This doubles bandwidth, but allows for smaller buffer time / faster sync.\nBest to turn this off unless your game is extremely fast paced.")]
+        public bool unreliableRedundancy = false;
 
         // client send rate follows server send rate to avoid errors for now
         /// <summary>Client Update frequency, per second. Use around 60Hz for fast paced games like Counter-Strike to minimize latency. Use around 30Hz for games like WoW to minimize computations. Use around 1-10Hz for slow paced games like EVE.</summary>
@@ -68,18 +63,6 @@ namespace Mirror
         // public int clientSendRate = 30; // 33 ms
 
         /// <summary>Automatically switch to this scene upon going offline (on start / on disconnect / on shutdown).</summary>
-        [Header("Scene Management")]
-        [Scene]
-        [FormerlySerializedAs("m_OfflineScene")]
-        [Tooltip("Scene that Mirror will switch to when the client or server is stopped")]
-        public string offlineScene = "";
-
-        /// <summary>Automatically switch to this scene upon going online (after connect/startserver).</summary>
-        [Scene]
-        [FormerlySerializedAs("m_OnlineScene")]
-        [Tooltip("Scene that Mirror will switch to when the server is started. Clients will recieve a Scene Message to load the server's current scene when they connect.")]
-        public string onlineScene = "";
-
         // transport layer
         [Header("Network Info")]
         [Tooltip("Transport component attached to this object that server and client will use to connect")]
@@ -95,6 +78,7 @@ namespace Mirror
         [Tooltip("Maximum number of concurrent connections.")]
         public int maxConnections = 100;
 
+        [Header("Security")]
         // Mirror global disconnect inactive option, independent of Transport.
         // not all Transports do this properly, and it's easiest to configure this just once.
         // this is very useful for some projects, keep it.
@@ -104,9 +88,27 @@ namespace Mirror
         [Tooltip("Timeout in seconds for server to automatically disconnect inactive connections if 'disconnectInactiveConnections' is enabled.")]
         public float disconnectInactiveTimeout = 60f;
 
+        [Tooltip("For security, it is recommended to disconnect a player if a networked action triggers an exception\nThis could prevent components being accessed in an undefined state, which may be an attack vector for exploits.\nHowever, some games may want to allow exceptions in order to not interrupt the player's experience.")]
+        public bool exceptionsDisconnect = true; // security by default
+
         [Header("Authentication")]
         [Tooltip("Authentication component attached to this object")]
         public NetworkAuthenticator authenticator;
+
+        [Header("Scene Management")]
+        [Scene]
+        [FormerlySerializedAs("m_OfflineScene")]
+        [Tooltip("Scene that Mirror will switch to when the client or server is stopped")]
+        public string offlineScene = "";
+
+        /// <summary>Automatically switch to this scene upon going online (after connect/startserver).</summary>
+        [Scene]
+        [FormerlySerializedAs("m_OnlineScene")]
+        [Tooltip("Scene that Mirror will switch to when the server is started. Clients will recieve a Scene Message to load the server's current scene when they connect.")]
+        public string onlineScene = "";
+
+        [Range(0, 60), Tooltip("Optional delay that can be used after disconnecting to show a 'Connection lost...' message or similar before loading the offline scene, which may take a long time in big projects.")]
+        public float offlineSceneLoadDelay = 0;
 
         /// <summary>The default prefab to be used to create player objects on the server.</summary>
         // Player objects are created in the default handler for AddPlayer() on
@@ -133,10 +135,6 @@ namespace Mirror
         /// <summary>List of transforms populated by NetworkStartPositions</summary>
         public static List<Transform> startPositions = new List<Transform>();
         public static int startPositionIndex;
-
-        [Header("Security")]
-        [Tooltip("For security, it is recommended to disconnect a player if a networked action triggers an exception\nThis could prevent components being accessed in an undefined state, which may be an attack vector for exploits.\nHowever, some games may want to allow exceptions in order to not interrupt the player's experience.")]
-        public bool exceptionsDisconnect = true; // security by default
 
         [Header("Snapshot Interpolation")]
         public SnapshotInterpolationSettings snapshotSettings = new SnapshotInterpolationSettings();
@@ -184,23 +182,10 @@ namespace Mirror
         // virtual so that inheriting classes' OnValidate() can call base.OnValidate() too
         public virtual void OnValidate()
         {
-#pragma warning disable 618
-            // autoStartServerBuild and autoConnectClientBuild are now obsolete, but to avoid
-            // a breaking change we'll set headlessStartMode to what the user had set before.
-            //
-            // headlessStartMode defaults to DoNothing, so if the user had neither of these
-            // set, then it will remain as DoNothing, and if they set headlessStartMode to
-            // any selection in the inspector it won't get changed back.
-            if (autoStartServerBuild)
-                headlessStartMode = HeadlessStartOptions.AutoStartServer;
-            else if (autoConnectClientBuild)
-                headlessStartMode = HeadlessStartOptions.AutoStartClient;
-
-            // Setting both to false here prevents this code from fighting with user
-            // selection in the inspector, and they're both SerialisedField's.
-            autoStartServerBuild = false;
-            autoConnectClientBuild = false;
-#pragma warning restore 618
+            // unreliable full send rate needs to be >= 0.
+            // we need to have something to delta compress against.
+            // it should also be <= sendRate otherwise there's no point.
+            unreliableBaselineRate = Mathf.Clamp(unreliableBaselineRate, 1, sendRate);
 
             // always >= 0
             maxConnections = Mathf.Max(maxConnections, 0);
@@ -311,6 +296,8 @@ namespace Mirror
         void ApplyConfiguration()
         {
             NetworkServer.tickRate = sendRate;
+            NetworkServer.unreliableBaselineRate = unreliableBaselineRate;
+            NetworkServer.unreliableRedundancy = unreliableRedundancy;
             NetworkClient.snapshotSettings = snapshotSettings;
             NetworkClient.connectionQualityInterval = evaluationInterval;
             NetworkClient.connectionQualityMethod = evaluationMethod;
@@ -402,11 +389,6 @@ namespace Mirror
         void SetupClient()
         {
             InitializeSingleton();
-
-#pragma warning disable 618
-            // Remove when OnConnectionQualityChanged is removed.
-            NetworkClient.onConnectionQualityChanged += OnConnectionQualityChanged;
-#pragma warning restore 618
 
             // apply settings before initializing anything
             NetworkClient.exceptionsDisconnect = exceptionsDisconnect;
@@ -674,21 +656,12 @@ namespace Mirror
             //     NetworkClient.OnTransportDisconnect
             //   NetworkManager.OnClientDisconnect
             NetworkClient.Disconnect();
-
-#pragma warning disable 618
-            // Remove when OnConnectionQualityChanged is removed.
-            NetworkClient.onConnectionQualityChanged -= OnConnectionQualityChanged;
-#pragma warning restore 618
-
-            // UNET invoked OnDisconnected cleanup immediately.
-            // let's keep it for now, in case any projects depend on it.
-            // TODO simply remove this in the future.
-            OnClientDisconnectInternal();
         }
 
         // called when quitting the application by closing the window / pressing
         // stop in the editor. virtual so that inheriting classes'
         // OnApplicationQuit() can call base.OnApplicationQuit() too
+        // (this can't be in OnDestroy: https://github.com/MirrorNetworking/Mirror/issues/3952)
         public virtual void OnApplicationQuit()
         {
             // stop client first
@@ -828,6 +801,7 @@ namespace Mirror
         public virtual void OnDestroy()
         {
             //Debug.Log("NetworkManager destroyed");
+            SceneManager.sceneLoaded -= OnSceneLoaded;
         }
 
         /// <summary>The name of the current network scene.</summary>
@@ -1338,12 +1312,14 @@ namespace Mirror
             // Check loadingSceneAsync to ensure we don't double-invoke the scene change.
             // Check if NetworkServer.active because we can get here via Disconnect before server has started to change scenes.
             if (!string.IsNullOrWhiteSpace(offlineScene) && !Utils.IsSceneActive(offlineScene) && loadingSceneAsync == null && !NetworkServer.active)
-            {
-                ClientChangeScene(offlineScene, SceneOperation.Normal);
-            }
+                Invoke(nameof(ClientChangeOfflineScene), offlineSceneLoadDelay);
 
             networkSceneName = "";
         }
+
+        // wrap ClientChangeScene call without parameters for use in Invoke.
+        void ClientChangeOfflineScene() =>
+            ClientChangeScene(offlineScene, SceneOperation.Normal);
 
         void OnClientNotReadyMessageInternal(NotReadyMessage msg)
         {
@@ -1360,9 +1336,7 @@ namespace Mirror
 
             // This needs to run for host client too. NetworkServer.active is checked there
             if (NetworkClient.isConnected)
-            {
                 ClientChangeScene(msg.sceneName, msg.sceneOperation, msg.customHandling);
-            }
         }
 
         public Action<NetworkConnectionToClient> OnClientEnter = delegate (NetworkConnectionToClient conn) { };
@@ -1450,24 +1424,6 @@ namespace Mirror
         /// <summary>Called on clients when disconnected from a server.</summary>
         public virtual void OnClientDisconnect() { Application.Quit(); }
 
-        // Deprecated 2023-12-05
-        /// <summary>Deprecated: NetworkClient handles this now.</summary>
-        [Obsolete("NetworkClient handles this now.")]
-        public virtual void CalculateConnectionQuality()
-        {
-            // Moved to NetworkClient
-        }
-
-        // Deprecated 2023-12-05
-        /// <summary>Deprecated: NetworkClient handles this now.</summary>
-        [Obsolete("This will be removed. Subscribe to NetworkClient.onConnectionQualityChanged in your own code")]
-        public virtual void OnConnectionQualityChanged(ConnectionQuality previous, ConnectionQuality current)
-        {
-            // logging the change is very useful to track down user's lag reports.
-            // we want to include as much detail as possible for debugging.
-            //Debug.Log($"[Mirror] Connection Quality changed from {previous} to {current}:\n  rtt={(NetworkTime.rtt * 1000):F1}ms\n  rttVar={(NetworkTime.rttVariance * 1000):F1}ms\n  bufferTime={(NetworkClient.bufferTime * 1000):F1}ms");
-        }
-
         /// <summary>Called on client when transport raises an exception.</summary>
         public virtual void OnClientError(TransportError error, string reason) { }
 
@@ -1521,7 +1477,7 @@ namespace Mirror
         /// <summary>This is called when a host is stopped.</summary>
         public virtual void OnStopHost() { }
 
-#if DEBUG
+#if UNITY_EDITOR || (!UNITY_SERVER && DEBUG)
         // keep OnGUI even in builds. useful to debug snap interp.
         void OnGUI()
         {

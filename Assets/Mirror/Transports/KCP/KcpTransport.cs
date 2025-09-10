@@ -116,7 +116,7 @@ namespace kcp2k
                 () => OnClientConnected.Invoke(),
                 (message, channel) => OnClientDataReceived.Invoke(message, FromKcpChannel(channel)),
                 () => OnClientDisconnected?.Invoke(), // may be null in StopHost(): https://github.com/MirrorNetworking/Mirror/issues/3708
-                (error, reason) => OnClientError.Invoke(ToTransportError(error), reason),
+                (error, reason) => OnClientError?.Invoke(ToTransportError(error), reason), // may be null during shutdown: https://github.com/MirrorNetworking/Mirror/issues/3876
                 config
             );
 
@@ -323,8 +323,8 @@ namespace kcp2k
             GUILayout.EndArea();
         }
 
-// OnGUI allocates even if it does nothing. avoid in release.
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        // OnGUI allocates even if it does nothing. avoid in release.
+#if UNITY_EDITOR || (!UNITY_SERVER && DEBUG)
         protected virtual void OnGUI()
         {
             if (statisticsGUI) OnGUIStatistics();

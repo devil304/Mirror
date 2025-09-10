@@ -6,7 +6,7 @@ namespace Mirror.Examples.Common.Controllers.Flyer
 {
     [AddComponentMenu("")]
     [DisallowMultipleComponent]
-    public class FlyerControllerUI : ContollerUIBase
+    public class FlyerControllerUI : ControllerUIBase
     {
         [Serializable]
         public struct MoveTexts
@@ -41,7 +41,7 @@ namespace Mirror.Examples.Common.Controllers.Flyer
         [SerializeField] FlightTexts flightTexts;
         [SerializeField] OptionsTexts optionsTexts;
 
-        public void Refresh(FlyerController.MoveKeys moveKeys, FlyerController.FlightKeys flightKeys, FlyerController.OptionsKeys optionsKeys)
+        public void Refresh(FlyerControllerBase.MoveKeys moveKeys, FlyerControllerBase.FlightKeys flightKeys, FlyerControllerBase.OptionsKeys optionsKeys)
         {
             // Movement Keys
             moveTexts.keyTextTurnLeft.text = GetKeyText(moveKeys.TurnLeft);
